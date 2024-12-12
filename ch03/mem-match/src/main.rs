@@ -4,13 +4,12 @@
 
 use core::fmt::Write;
 use cortex_m_rt::entry;
-use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::digital::v2::InputPin;
 use microbit::board::Board;
 use microbit::display::blocking::Display;
 use microbit::hal::Timer;
 use panic_probe as _;
-use rtt_target::{rtt_init, UpChannel};
+use rtt_target::rtt_init;
 
 struct XorShiftRng {
     state: u32,
@@ -159,32 +158,47 @@ fn main() -> ! {
     let seed = timer.read();
     let mut rng = XorShiftRng::new(seed);
 
+    let mut last_button_state = button_a.is_low().unwrap();
+
     loop {
         match game_state {
             GameState::ShowingSmiley => {
                 copy_pattern_to_buffer(&SMILEY, &mut display_buffer);
                 display.show(&mut timer, display_buffer, 100);
 
-                if button_a.is_low().unwrap() {
+                let current_button_state = button_a.is_low().unwrap();
+
+                if current_button_state && !last_button_state {
                     clear_buffer(&mut display_buffer);
                     display.show(&mut timer, display_buffer, 100);
-                    timer.delay_ms(1000_u32);
                     game_state = GameState::ShowingPatterns;
                 }
+
+                last_button_state = current_button_state;
             }
 
             GameState::ShowingPatterns => {
                 current_pattern = rng.next_range(10);
                 copy_pattern_to_buffer(&PATTERNS[current_pattern], &mut display_buffer);
-                display.show(&mut timer, display_buffer, 1000);
 
-                if button_a.is_low().unwrap() {
-                    // Print the selected pattern number using RTT
-                    writeln!(channel, "Selected pattern: {}", current_pattern).ok();
+                // Split the 1000ms delay into multiple shorter delays,
+                // check the button status each time
+                let mut elapsed = 0;
+                while elapsed < 1000 {
+                    // Refresh the display every 50ms
+                    display.show(&mut timer, display_buffer, 50);
 
-                    game_state = GameState::ShowingSmiley;
-                } else {
-                    timer.delay_ms(1000_u32);
+                    let current_button_state = button_a.is_low().unwrap();
+
+                    if current_button_state && !last_button_state {
+                        writeln!(channel, "Selected pattern: {}", current_pattern).ok();
+                        game_state = GameState::ShowingSmiley;
+                        break;
+                    }
+
+                    last_button_state = current_button_state;
+
+                    elapsed += 50;
                 }
             }
         }

@@ -1,4 +1,10 @@
-# A template for lighting up an LED on a micro:bit v2 board
+# Iteration 4: Print the Player's Selected Pattern Number in Terminal
+
+## How to check the player's selected pattern number in the terminal
+
+```
+cargo embed
+```
 
 ## How to generate a new project
 
