@@ -150,6 +150,7 @@ fn main() -> ! {
     let mut display = Display::new(board.display_pins);
     let mut timer = Timer::new(board.TIMER0);
     let button_a = board.buttons.button_a;
+    let button_b = board.buttons.button_b;
 
     let mut game_state = GameState::ShowingSmiley;
     let mut display_buffer = [[0u8; 5]; 5];
@@ -158,7 +159,8 @@ fn main() -> ! {
     let seed = timer.read();
     let mut rng = XorShiftRng::new(seed);
 
-    let mut last_button_state = button_a.is_low().unwrap();
+    let mut last_button_a_state = button_a.is_low().unwrap();
+    let mut last_button_b_state = button_b.is_low().unwrap();
 
     loop {
         match game_state {
@@ -168,13 +170,13 @@ fn main() -> ! {
 
                 let current_button_state = button_a.is_low().unwrap();
 
-                if current_button_state && !last_button_state {
+                if current_button_state && !last_button_a_state {
                     clear_buffer(&mut display_buffer);
                     display.show(&mut timer, display_buffer, 100);
                     game_state = GameState::ShowingPatterns;
                 }
 
-                last_button_state = current_button_state;
+                last_button_a_state = current_button_state;
             }
 
             GameState::ShowingPatterns => {
@@ -188,15 +190,21 @@ fn main() -> ! {
                     // Refresh the display every 50ms
                     display.show(&mut timer, display_buffer, 50);
 
-                    let current_button_state = button_a.is_low().unwrap();
+                    let current_button_a_state = button_a.is_low().unwrap();
+                    let current_button_b_state = button_b.is_low().unwrap();
 
-                    if current_button_state && !last_button_state {
+                    if current_button_a_state && !last_button_a_state {
+                        break;
+                    }
+
+                    if current_button_b_state && !last_button_b_state {
                         writeln!(channel, "Selected pattern: {}", current_pattern).ok();
                         game_state = GameState::ShowingSmiley;
                         break;
                     }
 
-                    last_button_state = current_button_state;
+                    last_button_a_state = current_button_a_state;
+                    last_button_b_state = current_button_b_state;
 
                     elapsed += 50;
                 }
