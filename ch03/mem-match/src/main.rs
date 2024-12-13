@@ -253,14 +253,14 @@ fn main() -> ! {
                     // Refresh the display every 50ms
                     display.show(&mut timer, display_buffer, 50);
 
-                    let current_button_a_state = button_a.is_low().unwrap();
-                    let current_button_b_state = button_b.is_low().unwrap();
+                    let is_button_a_pressed = button_a.is_low().unwrap();
+                    let is_button_b_pressed = button_b.is_low().unwrap();
 
-                    if current_button_a_state && !last_button_a_state {
+                    if is_button_a_pressed && !last_button_a_state {
                         break;
                     }
 
-                    if current_button_b_state && !last_button_b_state {
+                    if is_button_b_pressed && !last_button_b_state {
                         make_beep(&mut pwm, &mut timer);
                         writeln!(channel, "Selected pattern: {}", current_pattern).ok();
 
@@ -276,8 +276,8 @@ fn main() -> ! {
                         break;
                     }
 
-                    last_button_a_state = current_button_a_state;
-                    last_button_b_state = current_button_b_state;
+                    last_button_a_state = is_button_a_pressed;
+                    last_button_b_state = is_button_b_pressed;
 
                     elapsed += 50;
                 }
