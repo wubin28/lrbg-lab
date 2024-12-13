@@ -208,8 +208,8 @@ fn main() -> ! {
     let seed = timer.read();
     let mut rng = XorShiftRng::new(seed);
 
-    let mut last_button_a_state = button_a.is_low().unwrap();
-    let mut last_button_b_state = button_b.is_low().unwrap();
+    let mut was_button_a_pressed = button_a.is_low().unwrap();
+    let mut was_button_b_pressed = button_b.is_low().unwrap();
 
     loop {
         match game_state {
@@ -219,7 +219,7 @@ fn main() -> ! {
 
                 let is_button_a_pressed = button_a.is_low().unwrap();
 
-                if is_button_a_pressed && !last_button_a_state {
+                if is_button_a_pressed && !was_button_a_pressed {
                     clear_buffer(&mut display_buffer);
                     display.show(&mut timer, display_buffer, 100);
 
@@ -230,7 +230,7 @@ fn main() -> ! {
                     game_state = GameState::ShowingTargetPattern;
                 }
 
-                last_button_a_state = is_button_a_pressed;
+                was_button_a_pressed = is_button_a_pressed;
             }
 
             GameState::ShowingTargetPattern => {
@@ -256,11 +256,11 @@ fn main() -> ! {
                     let is_button_a_pressed = button_a.is_low().unwrap();
                     let is_button_b_pressed = button_b.is_low().unwrap();
 
-                    if is_button_a_pressed && !last_button_a_state {
+                    if is_button_a_pressed && !was_button_a_pressed {
                         break;
                     }
 
-                    if is_button_b_pressed && !last_button_b_state {
+                    if is_button_b_pressed && !was_button_b_pressed {
                         make_beep(&mut pwm, &mut timer);
                         writeln!(channel, "Selected pattern: {}", current_pattern).ok();
 
@@ -276,8 +276,8 @@ fn main() -> ! {
                         break;
                     }
 
-                    last_button_a_state = is_button_a_pressed;
-                    last_button_b_state = is_button_b_pressed;
+                    was_button_a_pressed = is_button_a_pressed;
+                    was_button_b_pressed = is_button_b_pressed;
 
                     elapsed += 50;
                 }
