@@ -17,6 +17,19 @@ use microbit::pac::{PWM0, TIMER0};
 use panic_probe as _;
 use rtt_target::rtt_init;
 
+const LONG_DELAY_MS: u32 = 1000;
+const MEDIUM_DELAY_MS: u32 = 100;
+const SHORT_DELAY_MS: u32 = 50;
+
+const LED_MATRIX_DIMENSION: usize = 5;
+
+const PATTERN_NUM: usize = 10;
+
+const BUZZER_FREQ_HZ: u32 = 1000;
+
+const MAX_LED_BRIGHTNESS: u8 = 9;
+const MIN_LED_BRIGHTNESS: u8 = 0;
+
 struct XorShiftRng {
     state: u32,
 }
@@ -42,7 +55,7 @@ impl XorShiftRng {
     }
 }
 
-static SMILEY: [[u8; 5]; 5] = [
+static SMILEY: [[u8; LED_MATRIX_DIMENSION]; LED_MATRIX_DIMENSION] = [
     [0, 1, 0, 1, 0],
     [0, 1, 0, 1, 0],
     [0, 0, 0, 0, 0],
@@ -50,7 +63,7 @@ static SMILEY: [[u8; 5]; 5] = [
     [0, 1, 1, 1, 0],
 ];
 
-static BIG_SMILEY: [[u8; 5]; 5] = [
+static BIG_SMILEY: [[u8; LED_MATRIX_DIMENSION]; LED_MATRIX_DIMENSION] = [
     [0, 1, 0, 1, 0],
     [0, 1, 0, 1, 0],
     [0, 0, 0, 0, 0],
@@ -58,7 +71,7 @@ static BIG_SMILEY: [[u8; 5]; 5] = [
     [0, 1, 1, 1, 0],
 ];
 
-static CRYING_SMILEY: [[u8; 5]; 5] = [
+static CRYING_SMILEY: [[u8; LED_MATRIX_DIMENSION]; LED_MATRIX_DIMENSION] = [
     [0, 1, 0, 1, 0],
     [0, 1, 0, 1, 0],
     [0, 0, 0, 0, 0],
@@ -66,7 +79,7 @@ static CRYING_SMILEY: [[u8; 5]; 5] = [
     [1, 0, 0, 0, 1],
 ];
 
-static PATTERNS: [[[u8; 5]; 5]; 10] = [
+static PATTERNS: [[[u8; LED_MATRIX_DIMENSION]; LED_MATRIX_DIMENSION]; PATTERN_NUM] = [
     // 0 Heart shape
     [
         [0, 1, 0, 1, 0],
@@ -157,10 +170,10 @@ enum GameState {
 }
 
 fn make_beep(pwm: &mut Pwm<PWM0>, timer: &mut Timer<TIMER0>) {
-    pwm.set_period(Hertz(1000));
+    pwm.set_period(Hertz(BUZZER_FREQ_HZ));
     pwm.set_duty_on_common(pwm.max_duty() / 2);
     pwm.enable(Channel::C0);
-    timer.delay_ms(100_u32);
+    timer.delay_ms(MEDIUM_DELAY_MS);
     pwm.disable(Channel::C0);
 }
 
@@ -202,9 +215,9 @@ fn main() -> ! {
     pwm.set_output_pin(Channel::C0, speaker_pin.degrade());
 
     let mut current_state = GameState::ShowingSmiley;
-    let mut display_buffer = [[0u8; 5]; 5];
+    let mut display_buffer = [[0u8; LED_MATRIX_DIMENSION]; LED_MATRIX_DIMENSION];
     let mut current_pattern;
-    let mut target_pattern = 100;
+    let mut target_pattern = usize::MAX;
     let seed = timer.read();
     let mut rng = XorShiftRng::new(seed);
 
@@ -215,16 +228,16 @@ fn main() -> ! {
         match current_state {
             GameState::ShowingSmiley => {
                 copy_pattern_to_buffer(&SMILEY, &mut display_buffer);
-                display.show(&mut timer, display_buffer, 100);
+                display.show(&mut timer, display_buffer, MEDIUM_DELAY_MS);
 
                 let is_button_a_pressed = button_a.is_low().unwrap();
 
                 if is_button_a_pressed && !was_button_a_pressed {
                     clear_buffer(&mut display_buffer);
-                    display.show(&mut timer, display_buffer, 100);
+                    display.show(&mut timer, display_buffer, MEDIUM_DELAY_MS);
 
                     make_beep(&mut pwm, &mut timer);
-                    timer.delay_ms(100_u32);
+                    timer.delay_ms(MEDIUM_DELAY_MS);
                     make_beep(&mut pwm, &mut timer);
 
                     current_state = GameState::ShowingTargetPattern;
@@ -234,24 +247,24 @@ fn main() -> ! {
             }
 
             GameState::ShowingTargetPattern => {
-                current_pattern = rng.next_range(10);
+                current_pattern = rng.next_range(PATTERNS.len());
                 target_pattern = current_pattern;
                 writeln!(channel, "Target pattern: {}", current_pattern).ok();
                 copy_pattern_to_buffer(&PATTERNS[current_pattern], &mut display_buffer);
-                display.show(&mut timer, display_buffer, 1000);
+                display.show(&mut timer, display_buffer, LONG_DELAY_MS);
                 current_state = GameState::ShowingPatterns;
             }
 
             GameState::ShowingPatterns => {
-                current_pattern = rng.next_range(10);
+                current_pattern = rng.next_range(PATTERNS.len());
                 copy_pattern_to_buffer(&PATTERNS[current_pattern], &mut display_buffer);
 
                 // Split the 1000ms delay into multiple shorter delays,
                 // check the button status each time
                 let mut elapsed = 0;
-                while elapsed < 1000 {
+                while elapsed < LONG_DELAY_MS {
                     // Refresh the display every 50ms
-                    display.show(&mut timer, display_buffer, 50);
+                    display.show(&mut timer, display_buffer, SHORT_DELAY_MS);
 
                     let is_button_a_pressed = button_a.is_low().unwrap();
                     let is_button_b_pressed = button_b.is_low().unwrap();
@@ -266,10 +279,10 @@ fn main() -> ! {
 
                         if current_pattern == target_pattern {
                             copy_pattern_to_buffer(&BIG_SMILEY, &mut display_buffer);
-                            display.show(&mut timer, display_buffer, 1000);
+                            display.show(&mut timer, display_buffer, LONG_DELAY_MS);
                         } else {
                             copy_pattern_to_buffer(&CRYING_SMILEY, &mut display_buffer);
-                            display.show(&mut timer, display_buffer, 1000);
+                            display.show(&mut timer, display_buffer, LONG_DELAY_MS);
                         }
 
                         current_state = GameState::ShowingSmiley;
@@ -279,24 +292,24 @@ fn main() -> ! {
                     was_button_a_pressed = is_button_a_pressed;
                     was_button_b_pressed = is_button_b_pressed;
 
-                    elapsed += 50;
+                    elapsed += SHORT_DELAY_MS;
                 }
             }
         }
     }
 }
 
-fn copy_pattern_to_buffer(pattern: &[[u8; 5]; 5], buffer: &mut [[u8; 5]; 5]) {
-    for row in 0..5 {
-        for col in 0..5 {
-            buffer[row][col] = if pattern[row][col] == 1 { 9 } else { 0 };
+fn copy_pattern_to_buffer(pattern: &[[u8; LED_MATRIX_DIMENSION]; LED_MATRIX_DIMENSION], buffer: &mut [[u8; LED_MATRIX_DIMENSION]; LED_MATRIX_DIMENSION]) {
+    for row in 0..LED_MATRIX_DIMENSION {
+        for col in 0..LED_MATRIX_DIMENSION {
+            buffer[row][col] = if pattern[row][col] == 1 { MAX_LED_BRIGHTNESS } else { MIN_LED_BRIGHTNESS };
         }
     }
 }
 
-fn clear_buffer(buffer: &mut [[u8; 5]; 5]) {
-    for row in 0..5 {
-        for col in 0..5 {
+fn clear_buffer(buffer: &mut [[u8; LED_MATRIX_DIMENSION]; LED_MATRIX_DIMENSION]) {
+    for row in 0..LED_MATRIX_DIMENSION {
+        for col in 0..LED_MATRIX_DIMENSION {
             buffer[row][col] = 0;
         }
     }
