@@ -50,6 +50,22 @@ static SMILEY: [[u8; 5]; 5] = [
     [0, 1, 1, 1, 0],
 ];
 
+static BIG_SMILEY: [[u8; 5]; 5] = [
+    [0, 1, 0, 1, 0],
+    [0, 1, 0, 1, 0],
+    [0, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1],
+    [0, 1, 1, 1, 0],
+];
+
+static CRYING_SMILEY: [[u8; 5]; 5] = [
+    [0, 1, 0, 1, 0],
+    [0, 1, 0, 1, 0],
+    [0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+];
+
 static PATTERNS: [[[u8; 5]; 5]; 10] = [
     // 0 Heart shape
     [
@@ -188,7 +204,7 @@ fn main() -> ! {
     let mut game_state = GameState::ShowingSmiley;
     let mut display_buffer = [[0u8; 5]; 5];
     let mut current_pattern;
-
+    let mut target_pattern = 100;
     let seed = timer.read();
     let mut rng = XorShiftRng::new(seed);
 
@@ -219,6 +235,7 @@ fn main() -> ! {
 
             GameState::ShowingTargetPattern => {
                 current_pattern = rng.next_range(10);
+                target_pattern = current_pattern;
                 writeln!(channel, "Target pattern: {}", current_pattern).ok();
                 copy_pattern_to_buffer(&PATTERNS[current_pattern], &mut display_buffer);
                 display.show(&mut timer, display_buffer, 1000);
@@ -246,6 +263,15 @@ fn main() -> ! {
                     if current_button_b_state && !last_button_b_state {
                         make_beep(&mut pwm, &mut timer);
                         writeln!(channel, "Selected pattern: {}", current_pattern).ok();
+
+                        if current_pattern == target_pattern {
+                            copy_pattern_to_buffer(&BIG_SMILEY, &mut display_buffer);
+                            display.show(&mut timer, display_buffer, 1000);
+                        } else {
+                            copy_pattern_to_buffer(&CRYING_SMILEY, &mut display_buffer);
+                            display.show(&mut timer, display_buffer, 1000);
+                        }
+
                         game_state = GameState::ShowingSmiley;
                         break;
                     }
