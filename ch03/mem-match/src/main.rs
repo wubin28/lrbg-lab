@@ -137,6 +137,7 @@ static PATTERNS: [[[u8; 5]; 5]; 10] = [
 enum GameState {
     ShowingSmiley,
     ShowingPatterns,
+    ShowingTargetPattern,
 }
 
 fn make_beep(pwm: &mut Pwm<PWM0>, timer: &mut Timer<TIMER0>) {
@@ -205,10 +206,23 @@ fn main() -> ! {
                 if current_button_state && !last_button_a_state {
                     clear_buffer(&mut display_buffer);
                     display.show(&mut timer, display_buffer, 100);
-                    game_state = GameState::ShowingPatterns;
+
+                    make_beep(&mut pwm, &mut timer);
+                    timer.delay_ms(100_u32);
+                    make_beep(&mut pwm, &mut timer);
+
+                    game_state = GameState::ShowingTargetPattern;
                 }
 
                 last_button_a_state = current_button_state;
+            }
+
+            GameState::ShowingTargetPattern => {
+                current_pattern = rng.next_range(10);
+                writeln!(channel, "Target pattern: {}", current_pattern).ok();
+                copy_pattern_to_buffer(&PATTERNS[current_pattern], &mut display_buffer);
+                display.show(&mut timer, display_buffer, 1000);
+                game_state = GameState::ShowingPatterns;
             }
 
             GameState::ShowingPatterns => {
