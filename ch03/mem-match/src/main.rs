@@ -201,7 +201,7 @@ fn main() -> ! {
     // Degrade the speaker pin to a general purpose pin and set it as a PWM output pin
     pwm.set_output_pin(Channel::C0, speaker_pin.degrade());
 
-    let mut game_state = GameState::ShowingSmiley;
+    let mut current_state = GameState::ShowingSmiley;
     let mut display_buffer = [[0u8; 5]; 5];
     let mut current_pattern;
     let mut target_pattern = 100;
@@ -212,7 +212,7 @@ fn main() -> ! {
     let mut was_button_b_pressed = button_b.is_low().unwrap();
 
     loop {
-        match game_state {
+        match current_state {
             GameState::ShowingSmiley => {
                 copy_pattern_to_buffer(&SMILEY, &mut display_buffer);
                 display.show(&mut timer, display_buffer, 100);
@@ -227,7 +227,7 @@ fn main() -> ! {
                     timer.delay_ms(100_u32);
                     make_beep(&mut pwm, &mut timer);
 
-                    game_state = GameState::ShowingTargetPattern;
+                    current_state = GameState::ShowingTargetPattern;
                 }
 
                 was_button_a_pressed = is_button_a_pressed;
@@ -239,7 +239,7 @@ fn main() -> ! {
                 writeln!(channel, "Target pattern: {}", current_pattern).ok();
                 copy_pattern_to_buffer(&PATTERNS[current_pattern], &mut display_buffer);
                 display.show(&mut timer, display_buffer, 1000);
-                game_state = GameState::ShowingPatterns;
+                current_state = GameState::ShowingPatterns;
             }
 
             GameState::ShowingPatterns => {
@@ -272,7 +272,7 @@ fn main() -> ! {
                             display.show(&mut timer, display_buffer, 1000);
                         }
 
-                        game_state = GameState::ShowingSmiley;
+                        current_state = GameState::ShowingSmiley;
                         break;
                     }
 
