@@ -217,9 +217,9 @@ fn main() -> ! {
                 copy_pattern_to_buffer(&SMILEY, &mut display_buffer);
                 display.show(&mut timer, display_buffer, 100);
 
-                let current_button_state = button_a.is_low().unwrap();
+                let is_button_a_pressed = button_a.is_low().unwrap();
 
-                if current_button_state && !last_button_a_state {
+                if is_button_a_pressed && !last_button_a_state {
                     clear_buffer(&mut display_buffer);
                     display.show(&mut timer, display_buffer, 100);
 
@@ -230,7 +230,7 @@ fn main() -> ! {
                     game_state = GameState::ShowingTargetPattern;
                 }
 
-                last_button_a_state = current_button_state;
+                last_button_a_state = is_button_a_pressed;
             }
 
             GameState::ShowingTargetPattern => {
